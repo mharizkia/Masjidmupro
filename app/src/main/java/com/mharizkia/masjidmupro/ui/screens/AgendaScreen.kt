@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import com.mharizkia.masjidmupro.data.model.Agenda
 import com.mharizkia.masjidmupro.data.model.AgendaRequest
 import com.mharizkia.masjidmupro.ui.viewmodel.AgendaViewModel
+import com.mharizkia.masjidmupro.utils.AppUtils
 import java.util.*
 
 @Composable
@@ -135,7 +136,7 @@ fun AgendaRow(agenda: Agenda, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         AgendaTableCell(text = agenda.judul, weight = 0.45f)
-        AgendaTableCell(text = "${agenda.tanggal}\n${agenda.waktu ?: ""}", weight = 0.3f)
+        AgendaTableCell(text = "${AppUtils.formatDateOnly(agenda.tanggal)}\n${agenda.waktu ?: ""}", weight = 0.3f)
         AgendaTableCell(
             text = formatAgendaStatus(agenda.status),
             weight = 0.25f,
@@ -199,12 +200,12 @@ fun AgendaDetailContent(agenda: Agenda, onBack: () -> Unit) {
 
             Column {
                 Text("Waktu & Tempat", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("${agenda.hari ?: ""}, ${agenda.tanggal} pukul ${agenda.waktu ?: "-"}")
+                Text("${agenda.hari ?: ""}, ${AppUtils.formatDateOnly(agenda.tanggal)} pukul ${agenda.waktu ?: "-"}")
             }
 
             Column {
                 Text("Deskripsi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(agenda.deskripsi ?: "Tidak ada deskripsi", style = MaterialTheme.typography.bodyLarge)
+                Text(AppUtils.stripHtml(agenda.deskripsi ?: "Tidak ada deskripsi"), style = MaterialTheme.typography.bodyLarge)
             }
 
             Surface(

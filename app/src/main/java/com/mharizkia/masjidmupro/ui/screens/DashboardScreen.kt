@@ -213,38 +213,107 @@ fun KeuanganBarChart(data: KeuanganChartResponse) {
             )
             Spacer(modifier = Modifier.height(24.dp))
             
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .padding(horizontal = 8.dp)
+                    .height(250.dp)
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val barWidth = size.width / (data.labels.size * 3f)
-                    val spaceBetweenGroups = barWidth
-                    
-                    data.labels.forEachIndexed { index, _ ->
-                        val xOffset = index * (barWidth * 3)
-                        
-                        val mVal = masukData.getOrNull(index)?.toFloat() ?: 0f
-                        val kVal = keluarData.getOrNull(index)?.toFloat() ?: 0f
-                        
-                        val mHeight = (mVal / maxVal) * size.height
-                        val kHeight = (kVal / maxVal) * size.height
-                        
-                        // Draw Masuk Bar (Green)
-                        drawRect(
-                            color = Color(0xFF22C55E),
-                            topLeft = Offset(xOffset, size.height - mHeight),
-                            size = Size(barWidth, mHeight)
+                // Y-Axis Labels (Indikasi Uang)
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(bottom = 24.dp), // Match X-axis label height
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.End
+                ) {
+                    val steps = 5
+                    for (i in steps downTo 0) {
+                        val labelVal = (maxVal / steps) * i
+                        Text(
+                            text = formatShortCurrency(labelVal.toDouble()),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Chart Area
+                Column(modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val groupWidth = size.width / data.labels.size
+                            val barWidth = groupWidth / 3f
+                            
+                            // Grid lines
+                            val steps = 5
+                            for (i in 0..steps) {
+                                val y = size.height - (i * (size.height / steps))
+                                drawLine(
+                                    color = Color.LightGray.copy(alpha = 0.5f),
+                                    start = Offset(0f, y),
+                                    end = Offset(size.width, y),
+                                    strokeWidth = 1f
+                                )
+                            }
+
+                            data.labels.forEachIndexed { index, _ ->
+                                val xGroupStart = index * groupWidth
+                                
+                                val mVal = masukData.getOrNull(index)?.toFloat() ?: 0f
+                                val kVal = keluarData.getOrNull(index)?.toFloat() ?: 0f
+                                
+                                val mHeight = (mVal / maxVal) * size.height
+                                val kHeight = (kVal / maxVal) * size.height
+                                
+                                // Draw Masuk Bar (Green)
+                                drawRect(
+                                    color = Color(0xFF22C55E),
+                                    topLeft = Offset(xGroupStart + barWidth / 2, size.height - mHeight),
+                                    size = Size(barWidth, mHeight)
+                                )
+                                
+                                // Draw Keluar Bar (Red)
+                                drawRect(
+                                    color = Color(0xFFEF4444),
+                                    topLeft = Offset(xGroupStart + barWidth * 1.5f, size.height - kHeight),
+                                    size = Size(barWidth, kHeight)
+                                )
+                            }
+                        }
+                    }
+
+                    // X-Axis Labels (Bulan)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(24.dp),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        // Only show labels if there's enough space, or show a subset
+                        val labelsToShow = if (data.labels.size > 6) {
+                            data.labels.filterIndexed { index, _ -> index % 2 == 0 }
+                        } else {
+                            data.labels
+                        }
                         
-                        // Draw Keluar Bar (Red)
-                        drawRect(
-                            color = Color(0xFFEF4444),
-                            topLeft = Offset(xOffset + barWidth, size.height - kHeight),
-                            size = Size(barWidth, kHeight)
-                        )
+                        data.labels.forEachIndexed { index, label ->
+                            // Simplify label (e.g., "Jan 2024" to "Jan")
+                            val shortLabel = label.split(" ").firstOrNull() ?: label
+                            if (data.labels.size <= 6 || index % 2 == 0) {
+                                Text(
+                                    text = shortLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }
@@ -260,6 +329,14 @@ fun KeuanganBarChart(data: KeuanganChartResponse) {
                 ChartLegend(color = Color(0xFFEF4444), label = "Keluar")
             }
         }
+    }
+}
+
+fun formatShortCurrency(amount: Double): String {
+    return when {
+        amount >= 1_000_000 -> String.format("%.1fM", amount / 1_000_000)
+        amount >= 1_000 -> String.format("%.0fK", amount / 1_000)
+        else -> amount.toInt().toString()
     }
 }
 

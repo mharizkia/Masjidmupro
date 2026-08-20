@@ -122,7 +122,8 @@ interface ApiService {
     suspend fun listPengguna(
         @Header("Authorization") token: String,
         @Query("page") page: Int = 1,
-        @Query("search") search: String? = null
+        @Query("search") search: String? = null,
+        @Query("role") role: String? = null
     ): Response<PaginatedUser>
 
     @Headers("Accept: application/json")

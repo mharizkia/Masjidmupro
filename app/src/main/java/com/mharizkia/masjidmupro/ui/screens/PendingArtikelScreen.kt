@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.mharizkia.masjidmupro.data.model.Artikel
 import com.mharizkia.masjidmupro.ui.viewmodel.ArtikelViewModel
+import com.mharizkia.masjidmupro.utils.AppUtils
 
 @Composable
 fun PendingArtikelScreen(paddingValues: PaddingValues, viewModel: ArtikelViewModel) {
@@ -226,7 +227,7 @@ fun ArtikelDetailContent(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
             )
-            Text(text = "Tanggal: ${artikel.createdAt}", style = MaterialTheme.typography.labelSmall)
+            Text(text = "Tanggal: ${AppUtils.formatDateOnly(artikel.createdAt)}", style = MaterialTheme.typography.labelSmall)
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -246,8 +247,8 @@ fun ArtikelDetailContent(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
             
-            val displayContent = artikel.deskripsi ?: artikel.konten ?: "Tidak ada konten"
-            Text(text = displayContent, style = MaterialTheme.typography.bodyLarge)
+            val rawContent = artikel.deskripsi ?: artikel.konten ?: "Tidak ada konten"
+            Text(text = AppUtils.stripHtml(rawContent), style = MaterialTheme.typography.bodyLarge)
             
             Spacer(modifier = Modifier.height(32.dp))
         }

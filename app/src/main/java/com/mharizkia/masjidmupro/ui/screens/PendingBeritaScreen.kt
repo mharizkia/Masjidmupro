@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.mharizkia.masjidmupro.data.model.Berita
 import com.mharizkia.masjidmupro.ui.viewmodel.BeritaViewModel
+import com.mharizkia.masjidmupro.utils.AppUtils
 import java.util.*
 
 @Composable
@@ -164,8 +165,9 @@ fun BeritaListContent(
                         .background(MaterialTheme.colorScheme.secondaryContainer)
                         .padding(horizontal = 8.dp, vertical = 12.dp)
                 ) {
-                    BeritaTableCell(text = "Judul Berita", weight = 0.7f, isHeader = true)
-                    BeritaTableCell(text = "Status", weight = 0.3f, isHeader = true)
+                    BeritaTableCell(text = "Judul Berita", weight = 0.5f, isHeader = true)
+                    BeritaTableCell(text = "Tanggal", weight = 0.25f, isHeader = true)
+                    BeritaTableCell(text = "Status", weight = 0.25f, isHeader = true)
                 }
 
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -188,10 +190,11 @@ fun BeritaRow(berita: Berita, onClick: () -> Unit) {
             .padding(horizontal = 8.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BeritaTableCell(text = berita.judul, weight = 0.7f)
+        BeritaTableCell(text = berita.judul, weight = 0.5f)
+        BeritaTableCell(text = AppUtils.formatDateOnly(berita.createdAt), weight = 0.25f)
         BeritaTableCell(
             text = formatBeritaStatus(berita.status),
-            weight = 0.3f,
+            weight = 0.25f,
             color = getBeritaStatusColor(berita.status)
         )
     }
@@ -224,7 +227,7 @@ fun BeritaDetailContent(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(text = berita.judul, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text(text = "Tanggal: ${berita.createdAt}", style = MaterialTheme.typography.labelSmall)
+            Text(text = "Tanggal: ${AppUtils.formatDateOnly(berita.createdAt)}", style = MaterialTheme.typography.labelSmall)
             
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -244,8 +247,8 @@ fun BeritaDetailContent(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
             
-            val displayContent = berita.deskripsi ?: berita.isi ?: "Tidak ada isi berita"
-            Text(text = displayContent, style = MaterialTheme.typography.bodyLarge)
+            val rawContent = berita.deskripsi ?: berita.isi ?: "Tidak ada isi berita"
+            Text(text = AppUtils.stripHtml(rawContent), style = MaterialTheme.typography.bodyLarge)
             
             Spacer(modifier = Modifier.height(32.dp))
         }

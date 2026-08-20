@@ -3,13 +3,10 @@ package com.mharizkia.masjidmupro.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +21,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun PenggunaScreen(paddingValues: PaddingValues, viewModel: PenggunaViewModel) {
     var showDialog by remember { mutableStateOf(false) }
+    var showFilterDialog by remember { mutableStateOf(false) }
     var selectedUser by remember { mutableStateOf<User?>(null) }
     var searchInput by remember { mutableStateOf(viewModel.searchQuery) }
 
@@ -36,37 +34,96 @@ fun PenggunaScreen(paddingValues: PaddingValues, viewModel: PenggunaViewModel) {
     LaunchedEffect(searchInput) {
         if (searchInput != viewModel.searchQuery) {
             delay(500.milliseconds) // Debounce
-            viewModel.onSearchQueryChanged(searchInput)
+            viewModel.searchQuery = searchInput
+            viewModel.fetchUsers()
         }
     }
 
     Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-        OutlinedTextField(
-            value = searchInput,
-            onValueChange = { searchInput = it },
+        Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            placeholder = { Text("Cari nama atau email...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            singleLine = true
-        )
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = searchInput,
+                onValueChange = { searchInput = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Cari nama atau email...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                singleLine = true
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = { showFilterDialog = true }) {
+                Icon(
+                    Icons.Default.FilterList,
+                    contentDescription = "Filter Role",
+                    tint = if (viewModel.selectedRoles.isNotEmpty()) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                )
+            }
+        }
+
+        // Active filters display using LazyRow for horizontal scrolling
+        if (viewModel.selectedRoles.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(viewModel.selectedRoles.toList()) { role ->
+                    val label = when(role) {
+                        "pengurus_masjid" -> "Pengurus"
+                        "ustadz" -> "Ustadz"
+                        "jamaah" -> "Jamaah"
+                        else -> role
+                    }
+                    FilterChip(
+                        selected = true,
+                        onClick = {
+                            viewModel.selectedRoles = viewModel.selectedRoles - role
+                            viewModel.fetchUsers()
+                        },
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                        trailingIcon = { Icon(Icons.Default.Close, null, modifier = Modifier.size(14.dp)) }
+                    )
+                }
+                
+                item {
+                    TextButton(onClick = { 
+                        viewModel.selectedRoles = emptySet()
+                        viewModel.fetchUsers()
+                    }) {
+                        Text("Hapus Semua", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (viewModel.isLoading && viewModel.users.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(viewModel.users) { user ->
-                        UserItem(
-                            user = user,
-                            onEdit = {
-                                selectedUser = user
-                                showDialog = true
-                            },
-                            onDelete = { viewModel.deleteUser(user.id) }
-                        )
+                if (viewModel.users.isEmpty() && !viewModel.isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Tidak ada pengguna ditemukan", style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(viewModel.users) { user ->
+                            UserItem(
+                                user = user,
+                                onEdit = {
+                                    selectedUser = user
+                                    showDialog = true
+                                },
+                                onDelete = { viewModel.deleteUser(user.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -94,6 +151,70 @@ fun PenggunaScreen(paddingValues: PaddingValues, viewModel: PenggunaViewModel) {
             }
         }
     }
+
+    if (showFilterDialog) {
+        RoleFilterDialog(
+            selectedRoles = viewModel.selectedRoles,
+            onDismiss = { showFilterDialog = false },
+            onApply = { roles ->
+                viewModel.selectedRoles = roles
+                viewModel.fetchUsers()
+                showFilterDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun RoleFilterDialog(
+    selectedRoles: Set<String>,
+    onDismiss: () -> Unit,
+    onApply: (Set<String>) -> Unit
+) {
+    var tempRoles by remember { mutableStateOf(selectedRoles) }
+    val roleOptions = listOf(
+        "pengurus_masjid" to "Pengurus Masjid",
+        "ustadz" to "Ustadz",
+        "jamaah" to "Jamaah"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Filter Berdasarkan Role") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                roleOptions.forEach { (value, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            tempRoles = if (tempRoles.contains(value)) tempRoles - value else tempRoles + value
+                        }
+                    ) {
+                        Checkbox(
+                            checked = tempRoles.contains(value),
+                            onCheckedChange = { checked ->
+                                tempRoles = if (checked) tempRoles + value else tempRoles - value
+                            }
+                        )
+                        Text(text = label, modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onApply(tempRoles) }) {
+                Text("Terapkan")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                tempRoles = emptySet()
+                onApply(emptySet())
+            }) {
+                Text("Reset")
+            }
+        }
+    )
 }
 
 @Composable
@@ -149,7 +270,6 @@ fun UserFormDialog(user: User?, onDismiss: () -> Unit, onSave: (UserRequest) -> 
                     modifier = Modifier.fillMaxWidth()
                 )
                 
-                // Role Dropdown
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = roles.find { it.first == role }?.second ?: role,

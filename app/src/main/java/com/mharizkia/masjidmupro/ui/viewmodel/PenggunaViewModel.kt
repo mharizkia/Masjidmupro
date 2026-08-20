@@ -10,6 +10,7 @@ import com.mharizkia.masjidmupro.data.model.PaginatedUser
 import com.mharizkia.masjidmupro.data.model.User
 import com.mharizkia.masjidmupro.data.model.UserRequest
 import com.mharizkia.masjidmupro.data.remote.RetrofitClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class PenggunaViewModel(private val authManager: AuthManager) : ViewModel() {
@@ -18,17 +19,27 @@ class PenggunaViewModel(private val authManager: AuthManager) : ViewModel() {
     var isSuccess by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
     var searchQuery by mutableStateOf("")
+    var selectedRoles by mutableStateOf<Set<String>>(emptySet())
+    
+    private var fetchJob: Job? = null
 
     fun fetchUsers(page: Int = 1) {
         val token = authManager.getToken() ?: return
-        viewModelScope.launch {
+        
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
             isLoading = true
             errorMessage = null
+            // Clear users on first page to show fresh loading state
+            if (page == 1) users = emptyList()
+
             try {
+                val roleParam = if (selectedRoles.isEmpty()) null else selectedRoles.joinToString(",")
                 val response = RetrofitClient.instance.listPengguna(
                     token = token,
                     page = page,
-                    search = if (searchQuery.isNotBlank()) searchQuery else null
+                    search = if (searchQuery.isNotBlank()) searchQuery else null,
+                    role = roleParam
                 )
                 if (response.isSuccessful) {
                     users = response.body()?.data ?: emptyList()
